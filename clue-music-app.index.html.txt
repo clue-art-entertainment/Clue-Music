@@ -1,0 +1,450 @@
+import { useState, useEffect, useRef } from "react";
+
+const GENRES = ["All", "Drill", "Old School", "Collaboration", "Gang", "Jazz"];
+
+const INITIAL_TRACKS = [
+  {
+    id: "t1",
+    title: "Kigali Drill Anthem",
+    artist: "Clue Artist",
+    duration: "3:10",
+    cover: "https://images.unsplash.com/photo-1507878866276-a947ef722fee?w=400&q=60",
+    audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    description: "Rwanda drill vibe with punchy 808s.",
+    genre: "Drill",
+    uploader: "CLUE Official",
+    likes: 42,
+  },
+  {
+    id: "t2",
+    title: "Old Kigali Nights",
+    artist: "MC Rwema",
+    duration: "4:02",
+    cover: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&q=60",
+    audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    description: "Classic old school vibes from the hills.",
+    genre: "Old School",
+    uploader: "MC Rwema",
+    likes: 28,
+  },
+  {
+    id: "t3",
+    title: "Jazz on Kiyovu",
+    artist: "Inzovu Quartet",
+    duration: "5:30",
+    cover: "https://images.unsplash.com/photo-1415201364774-f6f0bb35f28f?w=400&q=60",
+    audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    description: "Smooth jazz meets Rwandan rhythm.",
+    genre: "Jazz",
+    uploader: "Inzovu Quartet",
+    likes: 19,
+  },
+  {
+    id: "t4",
+    title: "Gang Collab 2025",
+    artist: "Various Artists",
+    duration: "3:45",
+    cover: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&q=60",
+    audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    description: "East Africa's finest on one track.",
+    genre: "Collaboration",
+    uploader: "CLUE Official",
+    likes: 75,
+  },
+];
+
+export default function App() {
+  const [catalog, setCatalog] = useState(INITIAL_TRACKS);
+  const [currentId, setCurrentId] = useState(null);
+  const [playing, setPlaying] = useState(false);
+  const [query, setQuery] = useState("");
+  const [genre, setGenre] = useState("All");
+  const [modal, setModal] = useState(null); // "upload" | "auth" | "share" | "profile"
+  const [shareTrack, setShareTrack] = useState(null);
+  const [user, setUser] = useState(null);
+  const [likedTracks, setLikedTracks] = useState([]);
+  const [library, setLibrary] = useState([]);
+  const [toast, setToast] = useState(null);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (!audioRef.current) return;
+    if (playing) audioRef.current.play().catch(() => {});
+    else audioRef.current.pause();
+  }, [playing, currentId]);
+
+  function showToast(msg) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  }
+
+  function play(id) {
+    if (currentId === id) setPlaying((p) => !p);
+    else { setCurrentId(id); setPlaying(true); }
+  }
+
+  function toggleLike(id) {
+    setLikedTracks((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  function addToLibrary(track) {
+    if (library.find((t) => t.id === track.id)) {
+      showToast("Already in your library");
+      return;
+    }
+    setLibrary((prev) => [...prev, track]);
+    showToast(`"${track.title}" added to library`);
+  }
+
+  function uploadTrack({ title, artist, description, genre, coverUrl }) {
+    const newTrack = {
+      id: "t" + Date.now(),
+      title,
+      artist,
+      duration: "-",
+      cover: coverUrl || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&q=60",
+      audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+      description,
+      genre,
+      uploader: user ? user.name : "Anonymous",
+      likes: 0,
+    };
+    setCatalog((c) => [newTrack, ...c]);
+    setModal(null);
+    showToast("Track uploaded!");
+  }
+
+  function signIn(name, email) {
+    setUser({ name, email, joined: "June 2026" });
+    setModal(null);
+    showToast(`Welcome, ${name}!`);
+  }
+
+  function logout() {
+    setUser(null);
+    showToast("Logged out");
+  }
+
+  const filtered = catalog.filter((t) => {
+    const q = query.toLowerCase();
+    const match =
+      t.title.toLowerCase().includes(q) ||
+      t.artist.toLowerCase().includes(q) ||
+      t.genre.toLowerCase().includes(q) ||
+      t.description.toLowerCase().includes(q);
+    return match && (genre === "All" || t.genre === genre);
+  });
+
+  const currentTrack = catalog.find((t) => t.id === currentId);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0a0a0a", color: "#f0f0f0", fontFamily: "'Inter', sans-serif", paddingBottom: currentTrack ? 100 : 20 }}>
+
+      {/* Header */}
+      <header style={{ background: "#111", borderBottom: "1px solid #222", padding: "16px 24px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.5px", color: "#fff" }}>
+            <span style={{ color: "#c8f73a" }}>CLUE</span> • HipHop Worldwide
+          </div>
+          <div style={{ fontSize: 11, color: "#666", letterSpacing: "2px", textTransform: "uppercase" }}>Rwanda Base · All Free</div>
+        </div>
+        <input
+          placeholder="Search tracks, artists..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ background: "#1a1a1a", border: "1px solid #333", color: "#fff", padding: "8px 14px", borderRadius: 8, fontSize: 14, width: 200, outline: "none" }}
+        />
+        {user ? (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={() => setModal("profile")} style={btnStyle("#1a1a1a", "#c8f73a")}>
+              👤 {user.name}
+            </button>
+            <button onClick={logout} style={btnStyle("#1a1a1a", "#888")}>Logout</button>
+          </div>
+        ) : (
+          <button onClick={() => setModal("auth")} style={btnStyle("#c8f73a", "#000")}>Sign In</button>
+        )}
+      </header>
+
+      {/* Genre Tabs */}
+      <div style={{ background: "#111", padding: "12px 24px", display: "flex", gap: 8, overflowX: "auto", borderBottom: "1px solid #1e1e1e" }}>
+        {GENRES.map((g) => (
+          <button key={g} onClick={() => setGenre(g)}
+            style={{ padding: "6px 16px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
+              background: genre === g ? "#c8f73a" : "#1e1e1e", color: genre === g ? "#000" : "#aaa" }}>
+            {g}
+          </button>
+        ))}
+        <button onClick={() => user ? setModal("upload") : setModal("auth")}
+          style={{ marginLeft: "auto", padding: "6px 16px", borderRadius: 20, border: "1px solid #c8f73a", background: "transparent", color: "#c8f73a", cursor: "pointer", fontSize: 13, fontWeight: 700, whiteSpace: "nowrap" }}>
+          + Upload Track
+        </button>
+      </div>
+
+      {/* Track Grid */}
+      <div style={{ padding: "24px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 20 }}>
+        {filtered.length === 0 && (
+          <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#555", padding: 60, fontSize: 16 }}>
+            No tracks found. Try a different search or genre.
+          </div>
+        )}
+        {filtered.map((t) => (
+          <TrackCard key={t.id} track={t}
+            isPlaying={currentId === t.id && playing}
+            isLiked={likedTracks.includes(t.id)}
+            onPlay={() => play(t.id)}
+            onLike={() => toggleLike(t.id)}
+            onAdd={() => addToLibrary(t)}
+            onShare={() => { setShareTrack(t); setModal("share"); }}
+          />
+        ))}
+      </div>
+
+      {/* Now Playing Bar */}
+      {currentTrack && (
+        <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#111", borderTop: "1px solid #222", padding: "12px 24px", display: "flex", alignItems: "center", gap: 16, zIndex: 100 }}>
+          <img src={currentTrack.cover} alt="" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover" }} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: 14 }}>{currentTrack.title}</div>
+            <div style={{ color: "#888", fontSize: 12 }}>{currentTrack.artist} · {currentTrack.genre}</div>
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button onClick={() => setPlaying((p) => !p)}
+              style={{ width: 40, height: 40, borderRadius: "50%", background: "#c8f73a", border: "none", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {playing ? "⏸" : "▶"}
+            </button>
+            <button onClick={() => { setCurrentId(null); setPlaying(false); }}
+              style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 18 }}>✕</button>
+          </div>
+          <audio ref={audioRef} src={currentTrack.audio} onEnded={() => setPlaying(false)} />
+        </div>
+      )}
+
+      {/* Modals */}
+      {modal === "upload" && <UploadModal onClose={() => setModal(null)} onUpload={uploadTrack} />}
+      {modal === "auth" && <AuthModal onClose={() => setModal(null)} onSignIn={signIn} />}
+      {modal === "share" && shareTrack && <ShareModal track={shareTrack} onClose={() => { setModal(null); setShareTrack(null); }} onToast={showToast} />}
+      {modal === "profile" && user && <ProfileModal user={user} library={library} likedCount={likedTracks.length} onClose={() => setModal(null)} />}
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: "fixed", bottom: currentTrack ? 110 : 24, left: "50%", transform: "translateX(-50%)", background: "#c8f73a", color: "#000", padding: "10px 20px", borderRadius: 8, fontWeight: 700, fontSize: 13, zIndex: 200, whiteSpace: "nowrap" }}>
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TrackCard({ track, isPlaying, isLiked, onPlay, onLike, onAdd, onShare }) {
+  return (
+    <div style={{ background: "#141414", borderRadius: 12, overflow: "hidden", border: "1px solid #1e1e1e", transition: "border-color 0.2s" }}
+      onMouseEnter={(e) => e.currentTarget.style.borderColor = "#333"}
+      onMouseLeave={(e) => e.currentTarget.style.borderColor = "#1e1e1e"}>
+      <div style={{ position: "relative" }}>
+        <img src={track.cover} alt={track.title} style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+        <button onClick={onPlay}
+          style={{ position: "absolute", bottom: 10, right: 10, width: 40, height: 40, borderRadius: "50%", background: "#c8f73a", border: "none", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {isPlaying ? "⏸" : "▶"}
+        </button>
+        <span style={{ position: "absolute", top: 10, left: 10, background: "#000a", padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, color: "#c8f73a", letterSpacing: "1px" }}>
+          {track.genre.toUpperCase()}
+        </span>
+        <span style={{ position: "absolute", top: 10, right: 10, background: "#0af0", padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 700, color: "#fff", background: "#00000080" }}>
+          FREE
+        </span>
+      </div>
+      <div style={{ padding: "14px" }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{track.title}</div>
+        <div style={{ color: "#888", fontSize: 13, marginBottom: 6 }}>{track.artist}</div>
+        <div style={{ color: "#666", fontSize: 12, marginBottom: 12, lineHeight: 1.4 }}>{track.description}</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onLike} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: "1px solid #2a2a2a", background: isLiked ? "#1a2a0a" : "transparent", color: isLiked ? "#c8f73a" : "#888", cursor: "pointer", fontSize: 13 }}>
+            {isLiked ? "♥" : "♡"} {track.likes + (isLiked ? 1 : 0)}
+          </button>
+          <button onClick={onAdd} style={{ flex: 1, padding: "7px 0", borderRadius: 8, border: "1px solid #2a2a2a", background: "transparent", color: "#888", cursor: "pointer", fontSize: 13 }}>
+            + Library
+          </button>
+          <button onClick={onShare} style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid #2a2a2a", background: "transparent", color: "#888", cursor: "pointer", fontSize: 13 }}>
+            ↗
+          </button>
+        </div>
+        <div style={{ marginTop: 10, fontSize: 11, color: "#444" }}>by {track.uploader}</div>
+      </div>
+    </div>
+  );
+}
+
+function UploadModal({ onClose, onUpload }) {
+  const [title, setTitle] = useState("");
+  const [artist, setArtist] = useState("");
+  const [desc, setDesc] = useState("");
+  const [genre, setGenre] = useState("Drill");
+  const [coverUrl, setCoverUrl] = useState("");
+  const [err, setErr] = useState("");
+
+  function submit() {
+    if (!title.trim() || !artist.trim()) { setErr("Title and artist are required."); return; }
+    onUpload({ title, artist, description: desc, genre, coverUrl });
+  }
+
+  return (
+    <Modal title="Upload Track — Free" onClose={onClose}>
+      {err && <div style={{ color: "#ff6b6b", fontSize: 13, marginBottom: 10 }}>{err}</div>}
+      <Field label="Track Title" value={title} onChange={setTitle} placeholder="e.g. Kigali Nights" />
+      <Field label="Artist Name" value={artist} onChange={setArtist} placeholder="e.g. MC Rwema" />
+      <div style={{ marginBottom: 14 }}>
+        <label style={labelStyle}>Genre</label>
+        <select value={genre} onChange={(e) => setGenre(e.target.value)} style={inputStyle}>
+          {GENRES.filter((g) => g !== "All").map((g) => <option key={g}>{g}</option>)}
+        </select>
+      </div>
+      <Field label="Description" value={desc} onChange={setDesc} placeholder="Tell us about this track..." />
+      <Field label="Cover Image URL (optional)" value={coverUrl} onChange={setCoverUrl} placeholder="https://..." />
+      <div style={{ background: "#1a1a1a", border: "1px dashed #333", borderRadius: 8, padding: "16px", textAlign: "center", color: "#555", fontSize: 13, marginBottom: 16 }}>
+        🎵 Audio file upload available in the full app
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={onClose} style={{ flex: 1, padding: "10px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer" }}>Cancel</button>
+        <button onClick={submit} style={{ flex: 2, padding: "10px", borderRadius: 8, border: "none", background: "#c8f73a", color: "#000", fontWeight: 700, cursor: "pointer" }}>Upload Free</button>
+      </div>
+    </Modal>
+  );
+}
+
+function AuthModal({ onClose, onSignIn }) {
+  const [mode, setMode] = useState("signin");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [err, setErr] = useState("");
+
+  function submit() {
+    if (!email.trim()) { setErr("Email is required."); return; }
+    if (mode === "signup" && !name.trim()) { setErr("Name is required."); return; }
+    onSignIn(mode === "signup" ? name : email.split("@")[0], email);
+  }
+
+  return (
+    <Modal title={mode === "signin" ? "Sign In" : "Create Account"} onClose={onClose}>
+      {err && <div style={{ color: "#ff6b6b", fontSize: 13, marginBottom: 10 }}>{err}</div>}
+      {mode === "signup" && <Field label="Your Name" value={name} onChange={setName} placeholder="e.g. MC Rwema" />}
+      <Field label="Email" value={email} onChange={setEmail} placeholder="you@example.com" />
+      <button onClick={submit} style={{ width: "100%", padding: "11px", borderRadius: 8, border: "none", background: "#c8f73a", color: "#000", fontWeight: 700, cursor: "pointer", marginBottom: 12 }}>
+        {mode === "signin" ? "Sign In" : "Create Account"}
+      </button>
+      <div style={{ textAlign: "center", fontSize: 13, color: "#666" }}>
+        {mode === "signin" ? "No account? " : "Have an account? "}
+        <span onClick={() => setMode(mode === "signin" ? "signup" : "signin")} style={{ color: "#c8f73a", cursor: "pointer" }}>
+          {mode === "signin" ? "Sign up free" : "Sign in"}
+        </span>
+      </div>
+    </Modal>
+  );
+}
+
+function ShareModal({ track, onClose, onToast }) {
+  function shareToFacebook() {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(track.title)}`);
+  }
+  function shareToTwitter() {
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent("🎵 Listen to " + track.title + " by " + track.artist + " on CLUE Music")}&url=${encodeURIComponent(window.location.href)}`);
+  }
+  function copyLink() {
+    navigator.clipboard.writeText(`CLUE Music: ${track.title} by ${track.artist}`).then(() => {
+      onToast("Link copied to clipboard!");
+      onClose();
+    });
+  }
+
+  return (
+    <Modal title={`Share "${track.title}"`} onClose={onClose}>
+      <img src={track.cover} alt="" style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 8, marginBottom: 16 }} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <button onClick={shareToFacebook} style={{ padding: "11px", borderRadius: 8, border: "none", background: "#1877f2", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+          Share on Facebook
+        </button>
+        <button onClick={shareToTwitter} style={{ padding: "11px", borderRadius: 8, border: "none", background: "#1da1f2", color: "#fff", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+          Share on Twitter / X
+        </button>
+        <button onClick={copyLink} style={{ padding: "11px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#c8f73a", fontWeight: 700, cursor: "pointer", fontSize: 14 }}>
+          Copy Link
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function ProfileModal({ user, library, likedCount, onClose }) {
+  return (
+    <Modal title="Your Profile" onClose={onClose}>
+      <div style={{ textAlign: "center", padding: "10px 0 20px" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#c8f73a", color: "#000", fontSize: 28, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+          {user.name[0].toUpperCase()}
+        </div>
+        <div style={{ fontWeight: 700, fontSize: 18 }}>{user.name}</div>
+        <div style={{ color: "#666", fontSize: 13 }}>{user.email}</div>
+        <div style={{ color: "#555", fontSize: 12, marginTop: 4 }}>Joined {user.joined}</div>
+      </div>
+      <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+        <div style={statBox}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#c8f73a" }}>{library.length}</div>
+          <div style={{ fontSize: 11, color: "#666" }}>In Library</div>
+        </div>
+        <div style={statBox}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#c8f73a" }}>{likedCount}</div>
+          <div style={{ fontSize: 11, color: "#666" }}>Liked</div>
+        </div>
+      </div>
+      {library.length > 0 && (
+        <div>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 8, letterSpacing: "1px", textTransform: "uppercase" }}>Your Library</div>
+          {library.map((t) => (
+            <div key={t.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderBottom: "1px solid #1e1e1e" }}>
+              <img src={t.cover} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }} />
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{t.title}</div>
+                <div style={{ fontSize: 11, color: "#666" }}>{t.artist}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <button onClick={onClose} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #333", background: "transparent", color: "#888", cursor: "pointer", marginTop: 16 }}>Close</button>
+    </Modal>
+  );
+}
+
+// ----------- Shared UI Components -----------
+function Modal({ title, onClose, children }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 150, padding: 16 }}>
+      <div style={{ background: "#141414", border: "1px solid #2a2a2a", borderRadius: 16, padding: 24, width: "100%", maxWidth: 420, maxHeight: "90vh", overflowY: "auto" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div style={{ fontWeight: 800, fontSize: 17 }}>{title}</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, placeholder }) {
+  return (
+    <div style={{ marginBottom: 14 }}>
+      <label style={labelStyle}>{label}</label>
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        style={inputStyle} />
+    </div>
+  );
+}
+
+const labelStyle = { display: "block", fontSize: 12, color: "#888", marginBottom: 6, letterSpacing: "0.5px" };
+const inputStyle = { width: "100%", background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#fff", padding: "9px 12px", borderRadius: 8, fontSize: 14, outline: "none", boxSizing: "border-box" };
+const statBox = { flex: 1, background: "#1a1a1a", borderRadius: 10, padding: "14px", textAlign: "center" };
+
+function btnStyle(bg, color) {
+  return { background: bg, color, border: "none", padding: "8px 16px", borderRadius: 8, cursor: "pointer", fontWeight: 600, fontSize: 13 };
+}
